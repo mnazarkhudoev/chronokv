@@ -52,10 +52,17 @@ type DB struct {
 	visibleTS   atomic.Uint64 // highest timestamp whose batch is fully applied
 	cutoffFloor atomic.Uint64 // highest retention cutoff compaction has used
 
-	mu    sync.Mutex // guards the fields below
-	mem   *memtableRef
-	imm   []*memtableRef // oldest first
-	bgErr error
+	mu        sync.Mutex // guards the fields below
+	mem       *memtableRef
+	imm       []*memtableRef // oldest first
+	bgErr     error
+	pending   map[uint64]struct{} // table numbers being written
+	flushCond *sync.Cond          // signalled when imm shrinks or bgErr is set
+
+	tables     *tableCache
+	flushCh    chan struct{}
+	flushMu    sync.Mutex // one flush at a time
+	obsoleteMu sync.Mutex
 
 	closed atomic.Bool
 	stop   chan struct{}
@@ -72,8 +79,15 @@ func Open(dir string, opts Options) (*DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	db := &DB{dir: dir, opts: opts, log: opts.Logger, lock: lock, stop: make(chan struct{})}
+	db := &DB{
+		dir: dir, opts: opts, log: opts.Logger, lock: lock,
+		stop:    make(chan struct{}),
+		pending: map[uint64]struct{}{},
+		tables:  newTableCache(dir),
+		flushCh: make(chan struct{}, 1),
+	}
 	db.commitCond = sync.NewCond(&db.commitMu)
+	db.flushCond = sync.NewCond(&db.mu)
 	if err := db.open(); err != nil {
 		if db.man != nil {
 			db.man.Close()
@@ -81,6 +95,10 @@ func Open(dir string, opts Options) (*DB, error) {
 		lock.Close()
 		return nil, err
 	}
+	db.man.SetReleaseHook(func() { db.deleteObsoleteFiles(false) })
+	db.deleteObsoleteFiles(true)
+	db.wg.Add(1)
+	go db.flushLoop()
 	if opts.SyncMode == SyncInterval {
 		db.wg.Add(1)
 		go db.syncLoop()
@@ -223,6 +241,7 @@ func (db *DB) Close() error {
 	if merr := db.man.Close(); err == nil {
 		err = merr
 	}
+	db.tables.closeAll()
 	if lerr := db.lock.Close(); err == nil {
 		err = lerr
 	}
@@ -235,6 +254,7 @@ func (db *DB) setBgErr(err error) {
 		db.bgErr = err
 		db.log.Error("database entered error state", "err", err)
 	}
+	db.flushCond.Broadcast()
 	db.mu.Unlock()
 }
 

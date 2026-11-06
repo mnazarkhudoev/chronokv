@@ -8,10 +8,11 @@ import (
 
 // writer is one Commit call waiting in the pipeline.
 type writer struct {
-	batch *Batch
-	ts    uint64
-	err   error
-	done  bool
+	batch  *Batch
+	rotate bool // Flush: rotate the memtable even if it isn't full
+	ts     uint64
+	err    error
+	done   bool
 }
 
 // maxGroupBytes bounds how much one leader writes on behalf of others, so a
@@ -57,8 +58,10 @@ func (db *DB) Commit(b *Batch) (Timestamp, error) {
 	if b.size > maxBatchSize {
 		return 0, ErrBatchTooLarge
 	}
-	w := &writer{batch: b}
+	return db.commit(&writer{batch: b})
+}
 
+func (db *DB) commit(w *writer) (Timestamp, error) {
 	db.commitMu.Lock()
 	db.queue = append(db.queue, w)
 	for !w.done && db.queue[0] != w {
@@ -70,7 +73,7 @@ func (db *DB) Commit(b *Batch) (Timestamp, error) {
 	}
 
 	// We're the leader. Take a group of writers from the front of the queue.
-	n, bytes := 1, b.size
+	n, bytes := 1, w.batch.size
 	for n < len(db.queue) && bytes+db.queue[n].batch.size <= maxGroupBytes {
 		bytes += db.queue[n].batch.size
 		n++
@@ -160,6 +163,16 @@ func (db *DB) writeGroup(group []*writer) error {
 		}
 	}
 	db.visibleTS.Store(lastTS)
+
+	rotate := mem.ApproxSize() >= db.opts.MemtableSize
+	for _, g := range group {
+		rotate = rotate || g.rotate
+	}
+	if rotate && !mem.Empty() {
+		// The group itself is committed either way; a failure here puts the
+		// DB into its error state and shows up on the next write.
+		db.rotate()
+	}
 	return nil
 }
 
