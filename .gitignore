@@ -1,0 +1,12 @@
+# build / test output
+/bin/
+*.test
+*.out
+coverage.*
+testdata/fuzz/**/corpus-tmp/
+
+# editor
+.idea/
+.vscode/
+*.swp
+.DS_Store
