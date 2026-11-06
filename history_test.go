@@ -54,7 +54,7 @@ func TestHistoryRetention(t *testing.T) {
 				mustPut(t, db, "k", "b") // @200
 			}
 			clock.Set(time.Unix(0, 300))
-			mustPut(t, db, "k", "c") // @300
+			mustPut(t, db, "k", "c")     // @300
 			clock.Set(time.Unix(0, 350)) // cutoff = 250
 
 			h, err := db.History([]byte("k"), 0)

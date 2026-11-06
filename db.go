@@ -12,6 +12,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/mnazarkhudoev/chronokv/internal/compaction"
 	"github.com/mnazarkhudoev/chronokv/internal/keys"
 	"github.com/mnazarkhudoev/chronokv/internal/manifest"
 	"github.com/mnazarkhudoev/chronokv/internal/memtable"
@@ -64,6 +65,11 @@ type DB struct {
 	flushMu    sync.Mutex // one flush at a time
 	obsoleteMu sync.Mutex
 
+	compactCh     chan struct{}
+	compactMu     sync.Mutex // one compaction at a time
+	compactOpts   compaction.Options
+	compactCursor [manifest.NumLevels][]byte
+
 	closed atomic.Bool
 	stop   chan struct{}
 	wg     sync.WaitGroup
@@ -81,10 +87,11 @@ func Open(dir string, opts Options) (*DB, error) {
 	}
 	db := &DB{
 		dir: dir, opts: opts, log: opts.Logger, lock: lock,
-		stop:    make(chan struct{}),
-		pending: map[uint64]struct{}{},
-		tables:  newTableCache(dir),
-		flushCh: make(chan struct{}, 1),
+		stop:      make(chan struct{}),
+		pending:   map[uint64]struct{}{},
+		tables:    newTableCache(dir),
+		flushCh:   make(chan struct{}, 1),
+		compactCh: make(chan struct{}, 1),
 	}
 	db.commitCond = sync.NewCond(&db.commitMu)
 	db.flushCond = sync.NewCond(&db.mu)
@@ -97,8 +104,10 @@ func Open(dir string, opts Options) (*DB, error) {
 	}
 	db.man.SetReleaseHook(func() { db.deleteObsoleteFiles(false) })
 	db.deleteObsoleteFiles(true)
-	db.wg.Add(1)
+	db.wg.Add(2)
 	go db.flushLoop()
+	go db.compactLoop()
+	db.maybeScheduleCompaction()
 	if opts.SyncMode == SyncInterval {
 		db.wg.Add(1)
 		go db.syncLoop()

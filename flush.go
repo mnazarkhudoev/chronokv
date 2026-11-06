@@ -154,53 +154,79 @@ type tableIter interface {
 	Error() error
 }
 
-// writeTable writes every entry of it into table num, via a temp file that
-// is renamed into place once it is complete and synced.
-func (db *DB) writeTable(num uint64, it tableIter) (manifest.FileMeta, error) {
+// tableBuilder writes one table via a temp file that is renamed into
+// place once it is complete and synced, so a crash never leaves a
+// half-written .sst behind (only a .tmp, which Open cleans up).
+type tableBuilder struct {
+	num        uint64
+	final, tmp string
+	f          *os.File
+	bw         *bufio.Writer
+	tw         *sstable.Writer
+}
+
+func (db *DB) newTableBuilder(num uint64) (*tableBuilder, error) {
 	final := filepath.Join(db.dir, tableName(num))
-	tmp := final + ".tmp"
-	f, err := os.Create(tmp)
+	b := &tableBuilder{num: num, final: final, tmp: final + ".tmp"}
+	f, err := os.Create(b.tmp)
+	if err != nil {
+		return nil, err
+	}
+	b.f = f
+	b.bw = bufio.NewWriterSize(f, 256<<10)
+	b.tw = sstable.NewWriter(b.bw, sstable.WriterOptions{BlockSize: db.opts.BlockSize, BloomBitsPerKey: db.opts.BloomBitsPerKey})
+	return b, nil
+}
+
+func (b *tableBuilder) add(ik, value []byte) error { return b.tw.Add(ik, value) }
+func (b *tableBuilder) estimatedSize() int64       { return b.tw.EstimatedSize() }
+
+func (b *tableBuilder) abort() {
+	b.f.Close()
+	os.Remove(b.tmp)
+}
+
+func (b *tableBuilder) finish() (manifest.FileMeta, error) {
+	props, err := b.tw.Finish()
+	if err == nil {
+		err = b.bw.Flush()
+	}
+	if err == nil {
+		err = b.f.Sync()
+	}
+	if err != nil {
+		b.abort()
+		return manifest.FileMeta{}, err
+	}
+	if err := b.f.Close(); err != nil {
+		os.Remove(b.tmp)
+		return manifest.FileMeta{}, err
+	}
+	if err := os.Rename(b.tmp, b.final); err != nil {
+		os.Remove(b.tmp)
+		return manifest.FileMeta{}, err
+	}
+	if err := wal.SyncDir(filepath.Dir(b.final)); err != nil {
+		return manifest.FileMeta{}, err
+	}
+	return manifest.FileMeta{Num: b.num, Size: props.Size, Smallest: props.Smallest, Largest: props.Largest}, nil
+}
+
+// writeTable writes every entry of it into table num.
+func (db *DB) writeTable(num uint64, it tableIter) (manifest.FileMeta, error) {
+	b, err := db.newTableBuilder(num)
 	if err != nil {
 		return manifest.FileMeta{}, err
 	}
-	fail := func(err error) (manifest.FileMeta, error) {
-		f.Close()
-		os.Remove(tmp)
-		return manifest.FileMeta{}, err
-	}
-	bw := bufio.NewWriterSize(f, 256<<10)
-	tw := sstable.NewWriter(bw, sstable.WriterOptions{BlockSize: db.opts.BlockSize, BloomBitsPerKey: db.opts.BloomBitsPerKey})
 	for ok := it.First(); ok; ok = it.Next() {
-		if err := tw.Add(it.Key(), it.Value()); err != nil {
-			return fail(err)
+		if err := b.add(it.Key(), it.Value()); err != nil {
+			b.abort()
+			return manifest.FileMeta{}, err
 		}
 	}
 	if err := it.Error(); err != nil {
-		return fail(err)
-	}
-	props, err := tw.Finish()
-	if err != nil {
-		return fail(err)
-	}
-	if err := bw.Flush(); err != nil {
-		return fail(err)
-	}
-	if err := f.Sync(); err != nil {
-		return fail(err)
-	}
-	if err := f.Close(); err != nil {
-		os.Remove(tmp)
+		b.abort()
 		return manifest.FileMeta{}, err
 	}
-	if err := os.Rename(tmp, final); err != nil {
-		os.Remove(tmp)
-		return manifest.FileMeta{}, err
-	}
-	if err := wal.SyncDir(db.dir); err != nil {
-		return manifest.FileMeta{}, err
-	}
-	return manifest.FileMeta{Num: num, Size: props.Size, Smallest: props.Smallest, Largest: props.Largest}, nil
+	return b.finish()
 }
-
-// maybeScheduleCompaction is filled in by the compaction code.
-func (db *DB) maybeScheduleCompaction() {}
