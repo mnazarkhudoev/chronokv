@@ -193,15 +193,26 @@ data/
 On `Open`:
 
 1. read `CURRENT`, replay the manifest (a torn last edit is ignored: it
-   was never acknowledged),
+   was never acknowledged; any other damage fails `Open` with
+   `ErrCorrupted`, because carrying on with a partial file set would make
+   step 3 delete live tables),
 2. replay every WAL segment numbered ≥ `LogNum` into a fresh memtable,
 3. delete orphans: tables no version references, WAL segments below
    `LogNum`, leftover `.tmp` files.
 
-For the WAL, a bad record at the **end of the newest segment** is what a
-crash mid-write looks like. That write never returned to its caller, so
-the segment is truncated there. A bad record anywhere else is real damage,
-and `Open` fails with `ErrCorrupted` instead of quietly losing data.
+For the WAL, a bad record at the **very end of the newest segment** (the
+record runs into end of file and nothing follows it) is what a crash
+mid-write looks like. That write never returned to its caller, so the
+segment is truncated there, and the truncation is fsynced. A bad record
+anywhere else, including the middle of the newest segment, is real
+damage, and `Open` fails with `ErrCorrupted` instead of quietly losing
+data.
+
+Shutdown has a similar trap. An iterator that outlives `Close` still holds
+a `Version`, and releasing it used to trigger file cleanup. If the
+directory had been reopened in the meantime, that cleanup worked from a
+stale list and deleted the new instance's tables. Now `Close` waits for
+running `Flush`/`Compact` calls and switches cleanup off for good.
 
 ## Compaction
 

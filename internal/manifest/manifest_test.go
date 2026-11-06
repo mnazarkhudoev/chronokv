@@ -196,3 +196,18 @@ func TestLoadMissingCurrent(t *testing.T) {
 		t.Fatal("Load without CURRENT should fail")
 	}
 }
+
+// M3 (upgraded): a crash between creating MANIFEST-000001 and writing
+// CURRENT must not make the directory impossible to create again.
+func TestCreateAfterCrashedCreate(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "MANIFEST-000001"), []byte("partial"), 0o644)
+	m, err := Create(dir)
+	if err != nil {
+		t.Fatalf("Create over a leftover manifest: %v", err)
+	}
+	m.Close()
+	if _, err := Load(dir); err != nil {
+		t.Fatal(err)
+	}
+}

@@ -15,6 +15,12 @@ import (
 // to finish. It's not needed for durability (the WAL covers that); it's
 // useful for tests, tools, and taking checkpoints.
 func (db *DB) Flush() error {
+	db.userOps.RLock()
+	defer db.userOps.RUnlock()
+	return db.flush()
+}
+
+func (db *DB) flush() error {
 	if db.closed.Load() {
 		return ErrClosed
 	}

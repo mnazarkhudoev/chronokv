@@ -172,7 +172,8 @@ Being honest about what it isn't:
 - No block cache and no compression yet. The OS page cache is doing a lot
   of work.
 - One compaction at a time, so heavy write loads will stall writers
-  sooner than a production engine would.
+  sooner than a production engine would. There's also no hard limit on
+  L0 size or on open table files yet.
 - No transactions beyond atomic batches.
 - Developed and tested on Linux. It builds elsewhere, but the directory
   lock (`flock`) and the crash test are unix only.

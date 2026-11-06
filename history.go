@@ -23,10 +23,10 @@ func (db *DB) History(key []byte, limit int) ([]Version, error) {
 	if db.closed.Load() {
 		return nil, ErrClosed
 	}
+	rs := db.acquireReadState() // before the cutoff, see Get
+	defer rs.version.Unref()
 	visible := db.visibleTS.Load()
 	cutoff := db.cutoff()
-	rs := db.acquireReadState()
-	defer rs.version.Unref()
 	src := db.newInternalIter(rs)
 	defer src.Close()
 

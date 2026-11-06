@@ -60,10 +60,12 @@ type DB struct {
 	pending   map[uint64]struct{} // table numbers being written
 	flushCond *sync.Cond          // signalled when imm shrinks or bgErr is set
 
-	tables     *tableCache
-	flushCh    chan struct{}
-	flushMu    sync.Mutex // one flush at a time
-	obsoleteMu sync.Mutex
+	tables      *tableCache
+	flushCh     chan struct{}
+	flushMu     sync.Mutex // one flush at a time
+	obsoleteMu  sync.Mutex
+	filesClosed bool         // set by Close, guarded by obsoleteMu
+	userOps     sync.RWMutex // held (read) by Flush/Compact, so Close can wait for them
 
 	compactCh     chan struct{}
 	compactMu     sync.Mutex // one compaction at a time
@@ -125,6 +127,9 @@ func (db *DB) open() error {
 		db.man, err = manifest.Create(db.dir)
 	} else {
 		err = statErr
+	}
+	if errors.Is(err, manifest.ErrCorrupted) {
+		return fmt.Errorf("%w: %v", ErrCorrupted, err)
 	}
 	if err != nil {
 		return err
@@ -191,14 +196,18 @@ func (db *DB) replaySegment(num uint64, last bool, mem *memtable.Memtable) error
 		}
 		var ce *wal.CorruptError
 		if errors.As(err, &ce) {
-			if !last {
+			st, serr := f.Stat()
+			if serr != nil {
+				return serr
+			}
+			if !last || !ce.Tail(st.Size()) {
 				return fmt.Errorf("%w: %s: %v", ErrCorrupted, path, err)
 			}
-			// The tail of the newest segment is where a crash mid-write
+			// The end of the newest segment is where a crash mid-write
 			// leaves a partial record. That write was never acknowledged,
 			// so cutting it off is safe.
 			db.log.Warn("truncating torn WAL tail", "file", path, "offset", ce.Offset, "reason", ce.Reason)
-			return os.Truncate(path, ce.Offset)
+			return truncateSync(path, ce.Offset)
 		}
 		if err != nil {
 			return err
@@ -210,6 +219,23 @@ func (db *DB) replaySegment(num uint64, last bool, mem *memtable.Memtable) error
 			db.lastSeq = seq
 		}
 	}
+}
+
+// truncateSync cuts a file to size and makes the new size durable, so a
+// power loss can't bring the torn bytes back after newer segments exist.
+func truncateSync(path string, size int64) error {
+	f, err := os.OpenFile(path, os.O_RDWR, 0)
+	if err != nil {
+		return err
+	}
+	err = f.Truncate(size)
+	if err == nil {
+		err = f.Sync()
+	}
+	if cerr := f.Close(); err == nil {
+		err = cerr
+	}
+	return err
 }
 
 // applyRecord decodes a WAL payload and inserts its operations into mem
@@ -243,8 +269,21 @@ func (db *DB) Close() error {
 	}
 	db.commitMu.Unlock()
 
+	// Wait for any Flush or Compact a caller started; they'll see closed.
+	db.userOps.Lock()
+	defer db.userOps.Unlock()
+
 	close(db.stop)
 	db.wg.Wait()
+
+	// From here on this instance must never delete files: a Version
+	// released later (say, by an iterator closed after Close) would be
+	// working from a stale picture, and another instance may already own
+	// the directory.
+	db.man.SetReleaseHook(nil)
+	db.obsoleteMu.Lock()
+	db.filesClosed = true
+	db.obsoleteMu.Unlock()
 
 	db.walMu.Lock()
 	err := db.wal.Close()

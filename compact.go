@@ -14,7 +14,9 @@ import (
 // while it runs. It's mostly useful for tests, benchmarks and tooling;
 // normal operation doesn't need it.
 func (db *DB) Compact() error {
-	if err := db.Flush(); err != nil {
+	db.userOps.RLock()
+	defer db.userOps.RUnlock()
+	if err := db.flush(); err != nil {
 		return err
 	}
 	db.compactMu.Lock()
@@ -143,11 +145,13 @@ func (db *DB) runCompaction(c *compaction.Compaction) (err error) {
 	for _, m := range outputs {
 		edit.Added = append(edit.Added, manifest.NewFile{Level: c.OutputLevel, Meta: m})
 	}
-	if err := db.man.Apply(edit); err != nil {
-		return err
-	}
+	// Raise the floor before the new tables become visible, so no read can
+	// pass the cutoff check and then find versions already dropped.
 	if cutoff > db.cutoffFloor.Load() {
 		db.cutoffFloor.Store(cutoff)
+	}
+	if err := db.man.Apply(edit); err != nil {
+		return err
 	}
 	db.log.Debug("compaction done", "inputs", len(c.Inputs), "outputs", len(outputs), "level", c.OutputLevel)
 	db.deleteObsoleteFiles(false)

@@ -22,6 +22,10 @@ import (
 	"github.com/mnazarkhudoev/chronokv/internal/wal"
 )
 
+// ErrCorrupted means the manifest can't be trusted. Open must stop: going
+// on with a partial file set would make cleanup delete live tables.
+var ErrCorrupted = errors.New("manifest: corrupted")
+
 // State holds the counters tracked alongside the file set.
 type State struct {
 	LogNum, NextFileNum, LastSeq, LastTS, Cutoff uint64
@@ -47,9 +51,12 @@ func manifestName(num uint64) string { return fmt.Sprintf("MANIFEST-%06d", num) 
 // Create starts a manifest for a brand-new database in dir.
 func Create(dir string) (*Manifest, error) {
 	m := &Manifest{dir: dir, live: map[*Version]struct{}{}}
-	m.state.NextFileNum = 2
+	// Normally 1, but a crash during an earlier Create can leave a
+	// MANIFEST-000001 behind without a CURRENT pointing at it.
+	num := maxFileNum(dir) + 1
+	m.state.NextFileNum = num + 1
 	v := &Version{}
-	if err := m.writeNew(1, v); err != nil {
+	if err := m.writeNew(num, v); err != nil {
 		return nil, err
 	}
 	m.install(v)
@@ -69,6 +76,10 @@ func Load(dir string) (*Manifest, error) {
 		return nil, fmt.Errorf("manifest: %w", err)
 	}
 	defer f.Close()
+	st, err := f.Stat()
+	if err != nil {
+		return nil, err
+	}
 
 	m := &Manifest{dir: dir, live: map[*Version]struct{}{}}
 	v := &Version{}
@@ -82,14 +93,19 @@ func Load(dir string) (*Manifest, error) {
 		if errors.As(err, &ce) {
 			// A torn final edit was never acknowledged to anyone (Apply
 			// returns only after the fsync), so dropping it is correct.
-			break
+			// The first record is the snapshot, which was synced before
+			// CURRENT ever pointed here, so it can't be torn.
+			if ce.Offset > 0 && ce.Tail(st.Size()) {
+				break
+			}
+			return nil, fmt.Errorf("%w: %s: %v", ErrCorrupted, oldName, err)
 		}
 		if err != nil {
 			return nil, err
 		}
 		e, err := decodeEdit(payload)
 		if err != nil {
-			return nil, fmt.Errorf("manifest: %s: %w", oldName, err)
+			return nil, fmt.Errorf("%w: %s: %v", ErrCorrupted, oldName, err)
 		}
 		m.state.merge(&e)
 		v = v.apply(&e)

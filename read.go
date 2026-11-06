@@ -29,6 +29,10 @@ func (db *DB) cutoff() uint64 {
 	return max(c, floor)
 }
 
+// testHookGet, if set, runs in the middle of Get. Tests use it to land a
+// compaction at the worst possible moment.
+var testHookGet func()
+
 // readTS resolves the timestamp a read should use.
 func (db *DB) readTS(ro readOpts) (uint64, error) {
 	visible := db.visibleTS.Load()
@@ -68,12 +72,18 @@ func (db *DB) Get(key []byte, opts ...ReadOption) ([]byte, error) {
 	if db.closed.Load() {
 		return nil, ErrClosed
 	}
+	// Pin the data first and check the cutoff second. The other order has a
+	// gap where a compaction could drop the versions this read needs after
+	// it passed the check.
+	rs := db.acquireReadState()
+	defer rs.version.Unref()
+	if testHookGet != nil {
+		testHookGet()
+	}
 	ts, err := db.readTS(collectReadOpts(opts))
 	if err != nil {
 		return nil, err
 	}
-	rs := db.acquireReadState()
-	defer rs.version.Unref()
 
 	seek := keys.SeekKey(key, ts)
 	prefix := keys.UserKeyPrefix(key)

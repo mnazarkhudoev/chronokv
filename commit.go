@@ -40,8 +40,15 @@ func (db *DB) Delete(key []byte) (Timestamp, error) {
 // Now returns a timestamp T such that every commit that has returned is
 // visible at T and every later commit gets a timestamp > T. Reading with
 // AsOf(Now()) later on gives a stable snapshot of this moment.
+//
+// If the database is closed or in its error state no write can succeed
+// anymore, so the current clock (or the last visible commit, if later) is
+// just as stable an answer.
 func (db *DB) Now() Timestamp {
-	ts, _ := db.Commit(&Batch{})
+	ts, err := db.Commit(&Batch{})
+	if err != nil {
+		return Timestamp(max(db.clockNanos(), db.visibleTS.Load()))
+	}
 	return ts
 }
 

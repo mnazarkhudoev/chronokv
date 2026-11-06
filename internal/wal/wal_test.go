@@ -159,3 +159,38 @@ func TestCreateRefusesExisting(t *testing.T) {
 		t.Fatal("Create over an existing segment should fail")
 	}
 }
+
+// Tail tells a torn final write (safe to cut off) from damage that has
+// good data after it (must not be cut off).
+func TestCorruptTail(t *testing.T) {
+	recs := randRecords(5, 300)
+	data, offsets := writeRecords(t, recs)
+	size := int64(len(data))
+	corruptAt := func(off int64) *CorruptError {
+		d := append([]byte(nil), data...)
+		d[off] ^= 0xFF
+		_, _, err := readAll(d)
+		var ce *CorruptError
+		if !errors.As(err, &ce) {
+			t.Fatalf("no corruption detected for flip at %d: %v", off, err)
+		}
+		return ce
+	}
+	if ce := corruptAt(offsets[1] + HeaderSize + 1); ce.Tail(size) {
+		t.Fatal("damage in a middle record must not count as a torn tail")
+	}
+	if ce := corruptAt(offsets[4] + HeaderSize + 1); !ce.Tail(size) {
+		t.Fatal("damage in the last record should count as a torn tail")
+	}
+	_, _, err := readAll(data[:len(data)-2])
+	var ce *CorruptError
+	if !errors.As(err, &ce) || !ce.Tail(size-2) {
+		t.Fatalf("short final record should be a torn tail: %v", err)
+	}
+	big := append([]byte(nil), data...)
+	big[offsets[4]], big[offsets[4]+3] = 0xFF, 0x7F // absurd length in the last header
+	_, _, err = readAll(big)
+	if !errors.As(err, &ce) || ce.Tail(size) {
+		t.Fatalf("an absurd length is damage, not a torn tail: %v", err)
+	}
+}

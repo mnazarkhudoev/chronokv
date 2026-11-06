@@ -42,6 +42,9 @@ func (db *DB) removePending(num uint64) {
 func (db *DB) deleteObsoleteFiles(removeTmp bool) {
 	db.obsoleteMu.Lock()
 	defer db.obsoleteMu.Unlock()
+	if db.filesClosed {
+		return
+	}
 
 	entries, err := os.ReadDir(db.dir)
 	if err != nil {

@@ -27,11 +27,12 @@ func (db *DB) Scan(start, end []byte, opts ...ReadOption) *Iterator {
 	if db.closed.Load() {
 		return &Iterator{err: ErrClosed}
 	}
+	rs := db.acquireReadState() // before the cutoff check, see Get
 	ts, err := db.readTS(collectReadOpts(opts))
 	if err != nil {
+		rs.version.Unref()
 		return &Iterator{err: err}
 	}
-	rs := db.acquireReadState()
 	return &Iterator{
 		vis:     iterator.NewVisible(db.newInternalIter(rs), ts, start, end),
 		version: rs.version,
