@@ -4,7 +4,8 @@ FUZZTIME ?= 30s
 FUZZ_TARGETS = \
 	./internal/keys:FuzzRoundTrip \
 	./internal/keys:FuzzOrdering \
-	./internal/wal:FuzzReader
+	./internal/wal:FuzzReader \
+	./internal/sstable:FuzzOpen
 
 .PHONY: test test-long fuzz build lint
 
