@@ -3,7 +3,8 @@ FUZZTIME ?= 30s
 # package:FuzzTarget pairs, run one at a time (go test -fuzz only takes one target).
 FUZZ_TARGETS = \
 	./internal/keys:FuzzRoundTrip \
-	./internal/keys:FuzzOrdering
+	./internal/keys:FuzzOrdering \
+	./internal/wal:FuzzReader
 
 .PHONY: test test-long fuzz build lint
 
