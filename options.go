@@ -3,6 +3,8 @@ package chronokv
 import (
 	"log/slog"
 	"time"
+
+	"github.com/mnazarkhudoev/chronokv/internal/compaction"
 )
 
 // SyncMode controls when the write-ahead log is fsynced.
@@ -40,6 +42,10 @@ type Options struct {
 
 	Logger *slog.Logger     // default: discard
 	Clock  func() time.Time // default time.Now; tests use a fake one
+
+	// compaction tuning; only tests change it, to get deep trees out of
+	// small amounts of data.
+	compaction compaction.Options
 }
 
 func (o Options) withDefaults() Options {

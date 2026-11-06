@@ -65,3 +65,35 @@ func TestBatchCopiesAndResets(t *testing.T) {
 		t.Fatal("Reset did not clear the batch")
 	}
 }
+
+// Writing the same key twice in one batch: both writes share a timestamp,
+// so only the last one may survive (otherwise two identical internal keys
+// would end up in the memtable and in SSTables).
+func TestBatchSameKeyTwice(t *testing.T) {
+	db := openTest(t, t.TempDir(), Options{})
+	b := db.NewBatch()
+	b.Put([]byte("k"), []byte("first"))
+	b.Put([]byte("k"), []byte("second"))
+	b.Put([]byte("gone"), []byte("x"))
+	b.Delete([]byte("gone"))
+	b.Delete([]byte("back"))
+	b.Put([]byte("back"), []byte("again"))
+	if _, err := db.Commit(b); err != nil {
+		t.Fatal(err)
+	}
+	check := func() {
+		t.Helper()
+		expectGet(t, db, "k", sp("second"))
+		expectGet(t, db, "gone", nil)
+		expectGet(t, db, "back", sp("again"))
+	}
+	check()
+	if err := db.Flush(); err != nil {
+		t.Fatalf("Flush: %v", err)
+	}
+	check()
+	h, _ := db.History([]byte("k"), 0)
+	if len(h) != 1 {
+		t.Fatalf("History has %d versions, want 1", len(h))
+	}
+}

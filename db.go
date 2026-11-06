@@ -92,6 +92,8 @@ func Open(dir string, opts Options) (*DB, error) {
 		tables:    newTableCache(dir),
 		flushCh:   make(chan struct{}, 1),
 		compactCh: make(chan struct{}, 1),
+
+		compactOpts: opts.compaction,
 	}
 	db.commitCond = sync.NewCond(&db.commitMu)
 	db.flushCond = sync.NewCond(&db.mu)

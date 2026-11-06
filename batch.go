@@ -19,9 +19,14 @@ type batchOp struct {
 
 // Batch collects writes that commit atomically: they share one timestamp,
 // and a reader at any point in time sees either all of them or none.
+//
+// Writing the same key twice in a batch keeps only the last write. All
+// writes in a batch share a timestamp, so two versions of one key in the
+// same batch would be indistinguishable.
 type Batch struct {
-	ops  []batchOp
-	size int
+	ops   []batchOp
+	index map[string]int // key -> position in ops
+	size  int
 }
 
 // Put adds a write of key=value. The batch keeps its own copies.
@@ -34,8 +39,22 @@ func (b *Batch) add(kind keys.Kind, key, value []byte) {
 	buf := make([]byte, len(key)+len(value))
 	copy(buf, key)
 	copy(buf[len(key):], value)
-	b.ops = append(b.ops, batchOp{kind, buf[:len(key):len(key)], buf[len(key):]})
-	b.size += 1 + 2*binary.MaxVarintLen64 + len(key) + len(value)
+	op := batchOp{kind, buf[:len(key):len(key)], buf[len(key):]}
+	if b.index == nil {
+		b.index = map[string]int{}
+	}
+	if i, ok := b.index[string(key)]; ok {
+		b.size -= opSize(b.ops[i])
+		b.ops[i] = op
+	} else {
+		b.index[string(key)] = len(b.ops)
+		b.ops = append(b.ops, op)
+	}
+	b.size += opSize(op)
+}
+
+func opSize(op batchOp) int {
+	return 1 + 2*binary.MaxVarintLen64 + len(op.key) + len(op.value)
 }
 
 // Len is the number of operations in the batch.
@@ -44,6 +63,7 @@ func (b *Batch) Len() int { return len(b.ops) }
 // Reset empties the batch so it can be reused.
 func (b *Batch) Reset() {
 	b.ops = b.ops[:0]
+	clear(b.index)
 	b.size = 0
 }
 
