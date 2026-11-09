@@ -7,26 +7,36 @@ the usual get/put/delete you can ask what a key (or a whole range of keys)
 looked like at any point in the past, as far back as the retention window
 you configure.
 
+<p align="center">
+  <img src="docs/img/demo.svg" alt="chronokv shell: a key is written twice, read now and as of two seconds ago, deleted, and its full history listed" width="780">
+</p>
+
+<details>
+<summary>Same session as text</summary>
+
 ```
 $ chronokv ./data
 chronokv shell, type "help" for commands
 chronokv> put user:42 {"plan":"free"}
-ok @ 2026-11-06T23:12:21.992449578Z (1794006741992449578)
+ok @ 2026-11-10T09:30:00Z (1794303000000000000)
+            (3 seconds later)
 chronokv> put user:42 {"plan":"pro"}
-ok @ 2026-11-06T23:12:24.997322395Z (1794006744997322395)
+ok @ 2026-11-10T09:30:03Z (1794303003000000000)
 chronokv> get user:42
 "{\"plan\":\"pro\"}"
 chronokv> get user:42 asof -2s
 "{\"plan\":\"free\"}"
 chronokv> del user:42
-ok @ 2026-11-06T23:12:24.997486641Z (1794006744997486641)
+ok @ 2026-11-10T09:30:04.2Z (1794303004200000000)
 chronokv> get user:42
 (nil)
 chronokv> history user:42
-2026-11-06T23:12:24.997486641Z (1794006744997486641)  (deleted)
-2026-11-06T23:12:24.997322395Z (1794006744997322395)  "{\"plan\":\"pro\"}"
-2026-11-06T23:12:21.992449578Z (1794006741992449578)  "{\"plan\":\"free\"}"
+2026-11-10T09:30:04.2Z (1794303004200000000)  (deleted)
+2026-11-10T09:30:03Z (1794303003000000000)  "{\"plan\":\"pro\"}"
+2026-11-10T09:30:00Z (1794303000000000000)  "{\"plan\":\"free\"}"
 ```
+
+</details>
 
 It's a from-scratch LSM tree: write-ahead log, skiplist memtable, SSTables
 with bloom filters, leveled compaction, crash recovery. It only uses the Go
@@ -108,6 +118,16 @@ RFC 3339 time, or `now`. Type `help` for the rest.
                                            ▼
                                       L0 sstables ──► compaction ──► L1 … L6
 ```
+
+<p align="center">
+  <img src="docs/img/timeline.svg" alt="Timeline of one key: free at 09:00, pro at 10:30, deleted at 11:15. With a 2h retention window read at 12:00, AsOf 09:30 returns ErrHistoryTruncated, 10:10 returns free, 10:50 returns pro, 11:40 returns not found" width="780">
+</p>
+
+Every answer in that picture is real: `docs/gen` writes those versions into
+a database, runs a full compaction, and draws whatever `Get` returns (the
+terminal demo above is recorded the same way). Note the 10:10 read: the
+09:00 version is older than the cutoff, but it survives compaction because
+it's still the correct answer there.
 
 The internal key is `escape(userKey) | 00 00 | ^timestamp | kind`. Plain
 byte comparison then sorts by user key and puts the newest version first,
