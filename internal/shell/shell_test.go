@@ -1,4 +1,4 @@
-package main
+package shell
 
 import (
 	"bytes"
@@ -19,7 +19,7 @@ func TestShellTranscript(t *testing.T) {
 	}
 	defer db.Close()
 	var out bytes.Buffer
-	sh := newShell(db, &out)
+	sh := New(db, &out)
 
 	T := uint64(start.UnixNano())
 	f := tsparse.Format
@@ -47,7 +47,7 @@ func TestShellTranscript(t *testing.T) {
 	}
 	for _, step := range script {
 		out.Reset()
-		if quit := sh.runLine(step.in); quit {
+		if quit := sh.RunLine(step.in); quit {
 			t.Fatalf("%q quit the shell", step.in)
 		}
 		if got := strings.TrimRight(out.String(), "\n"); got != step.want {
@@ -55,12 +55,12 @@ func TestShellTranscript(t *testing.T) {
 		}
 	}
 	for _, q := range []string{"quit", "exit"} {
-		if !sh.runLine(q) {
+		if !sh.RunLine(q) {
 			t.Fatalf("%q did not quit", q)
 		}
 	}
 	out.Reset()
-	if sh.runLine("   "); out.Len() != 0 {
+	if sh.RunLine("   "); out.Len() != 0 {
 		t.Fatalf("blank line printed %q", out.String())
 	}
 }

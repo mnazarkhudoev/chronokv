@@ -1,4 +1,6 @@
-package main
+// Package shell implements the line-oriented command language used by the
+// chronokv command (and by docs/gen to record the README demo).
+package shell
 
 import (
 	"errors"
@@ -24,12 +26,14 @@ const helpText = `commands:
 keys and values are bare words or Go-style quoted strings ("a b", "\x00").
 <time> is a raw timestamp, a negative duration (-5m), RFC3339, or now.`
 
-type shell struct {
+// Shell runs commands against a database and prints results to out.
+type Shell struct {
 	db  *chronokv.DB
 	out io.Writer
 }
 
-func newShell(db *chronokv.DB, out io.Writer) *shell { return &shell{db: db, out: out} }
+// New returns a Shell for db that writes to out.
+func New(db *chronokv.DB, out io.Writer) *Shell { return &Shell{db: db, out: out} }
 
 var errQuit = errors.New("quit")
 
@@ -37,9 +41,9 @@ type usageError string
 
 func (u usageError) Error() string { return "usage: " + string(u) }
 
-// runLine executes one line and prints the result or the error. It returns
+// RunLine executes one line and prints the result or the error. It returns
 // true when the user asked to quit.
-func (s *shell) runLine(line string) bool {
+func (s *Shell) RunLine(line string) bool {
 	err := s.exec(line)
 	if errors.Is(err, errQuit) {
 		return true
@@ -50,7 +54,7 @@ func (s *shell) runLine(line string) bool {
 	return false
 }
 
-func (s *shell) exec(line string) error {
+func (s *Shell) exec(line string) error {
 	args, err := tokenize(line)
 	if err != nil {
 		return err
@@ -94,7 +98,7 @@ func (s *shell) exec(line string) error {
 	return fmt.Errorf("unknown command %q (try help)", cmd)
 }
 
-func (s *shell) ok(ts chronokv.Timestamp, err error) error {
+func (s *Shell) ok(ts chronokv.Timestamp, err error) error {
 	if err != nil {
 		return err
 	}
@@ -102,7 +106,7 @@ func (s *shell) ok(ts chronokv.Timestamp, err error) error {
 	return nil
 }
 
-func (s *shell) done(err error) error {
+func (s *Shell) done(err error) error {
 	if err == nil {
 		fmt.Fprintln(s.out, "ok")
 	}
@@ -111,7 +115,7 @@ func (s *shell) done(err error) error {
 
 // options pulls "asof <t>" and "limit <n>" pairs out of args and returns
 // what's left.
-func (s *shell) options(args []string) (rest []string, opts []chronokv.ReadOption, limit int, err error) {
+func (s *Shell) options(args []string) (rest []string, opts []chronokv.ReadOption, limit int, err error) {
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "asof", "limit":
@@ -136,7 +140,7 @@ func (s *shell) options(args []string) (rest []string, opts []chronokv.ReadOptio
 	return rest, opts, limit, nil
 }
 
-func (s *shell) get(args []string) error {
+func (s *Shell) get(args []string) error {
 	rest, opts, _, err := s.options(args)
 	if err != nil {
 		return err
@@ -156,7 +160,7 @@ func (s *shell) get(args []string) error {
 	return nil
 }
 
-func (s *shell) scan(args []string) error {
+func (s *Shell) scan(args []string) error {
 	rest, opts, limit, err := s.options(args)
 	if err != nil {
 		return err
@@ -190,7 +194,7 @@ func (s *shell) scan(args []string) error {
 	return nil
 }
 
-func (s *shell) history(args []string) error {
+func (s *Shell) history(args []string) error {
 	rest, _, limit, err := s.options(args)
 	if err != nil {
 		return err

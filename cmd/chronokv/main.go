@@ -11,6 +11,7 @@ import (
 	"os"
 
 	"github.com/mnazarkhudoev/chronokv"
+	"github.com/mnazarkhudoev/chronokv/internal/shell"
 )
 
 func main() {
@@ -32,7 +33,7 @@ func main() {
 	}
 	defer db.Close()
 
-	sh := newShell(db, os.Stdout)
+	sh := shell.New(db, os.Stdout)
 	interactive := false
 	if st, err := os.Stdin.Stat(); err == nil && st.Mode()&os.ModeCharDevice != 0 {
 		interactive = true
@@ -47,7 +48,7 @@ func main() {
 		if !in.Scan() {
 			break
 		}
-		if sh.runLine(in.Text()) {
+		if sh.RunLine(in.Text()) {
 			break
 		}
 	}
