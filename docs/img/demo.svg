@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="780" height="427" viewBox="0 0 780 427" role="img" aria-label="chronokv shell demo: a key is written twice, read now and as of two seconds ago, deleted, and its history listed">
+<style>
+text{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace;font-size:13.5px;white-space:pre}
+.p{fill:#7ee787}.c{fill:#e6edf3}.o{fill:#c9d1d9}.d{fill:#8b949e}.s{fill:#ffa657}.x{fill:#ff7b72}.n{fill:#6e7681;font-style:italic}
+.r0{animation:k0 19.13s linear infinite}@keyframes k0{0%,4.18%{opacity:0}4.24%,95.82%{opacity:1}98.43%,100%{opacity:0}}
+.t0{animation:m0 19.13s linear infinite}@keyframes m0{0%,4.18%{transform:translateX(0);animation-timing-function:steps(27,end)}9.12%,100%{transform:translateX(234px)}}
+.u0{animation:q0 19.13s linear infinite}@keyframes q0{0%,4.18%{opacity:0}4.24%,10.69%{opacity:.8}10.75%,100%{opacity:0}}
+.r1{animation:k1 19.13s linear infinite}@keyframes k1{0%,10.95%{opacity:0}11.01%,95.82%{opacity:1}98.43%,100%{opacity:0}}
+.r2{animation:k2 19.13s linear infinite}@keyframes k2{0%,15.97%{opacity:0}16.03%,95.82%{opacity:1}98.43%,100%{opacity:0}}
+.r3{animation:k3 19.13s linear infinite}@keyframes k3{0%,22.77%{opacity:0}22.82%,95.82%{opacity:1}98.43%,100%{opacity:0}}
+.t3{animation:m3 19.13s linear infinite}@keyframes m3{0%,22.77%{transform:translateX(0);animation-timing-function:steps(26,end)}27.53%,100%{transform:translateX(226px)}}
+.u3{animation:q3 19.13s linear infinite}@keyframes q3{0%,22.77%{opacity:0}22.82%,29.10%{opacity:.8}29.15%,100%{opacity:0}}
+.r4{animation:k4 19.13s linear infinite}@keyframes k4{0%,29.36%{opacity:0}29.41%,95.82%{opacity:1}98.43%,100%{opacity:0}}
+.r5{animation:k5 19.13s linear infinite}@keyframes k5{0%,34.38%{opacity:0}34.43%,95.82%{opacity:1}98.43%,100%{opacity:0}}
+.t5{animation:m5 19.13s linear infinite}@keyframes m5{0%,34.38%{transform:translateX(0);animation-timing-function:steps(11,end)}36.39%,100%{transform:translateX(104px)}}
+.u5{animation:q5 19.13s linear infinite}@keyframes q5{0%,34.38%{opacity:0}34.43%,37.96%{opacity:.8}38.01%,100%{opacity:0}}
+.r6{animation:k6 19.13s linear infinite}@keyframes k6{0%,38.22%{opacity:0}38.27%,95.82%{opacity:1}98.43%,100%{opacity:0}}
+.r7{animation:k7 19.13s linear infinite}@keyframes k7{0%,43.24%{opacity:0}43.29%,95.82%{opacity:1}98.43%,100%{opacity:0}}
+.t7{animation:m7 19.13s linear infinite}@keyframes m7{0%,43.24%{transform:translateX(0);animation-timing-function:steps(20,end)}46.90%,100%{transform:translateX(177px)}}
+.u7{animation:q7 19.13s linear infinite}@keyframes q7{0%,43.24%{opacity:0}43.29%,48.47%{opacity:.8}48.52%,100%{opacity:0}}
+.r8{animation:k8 19.13s linear infinite}@keyframes k8{0%,48.73%{opacity:0}48.78%,95.82%{opacity:1}98.43%,100%{opacity:0}}
+.r9{animation:k9 19.13s linear infinite}@keyframes k9{0%,53.75%{opacity:0}53.80%,95.82%{opacity:1}98.43%,100%{opacity:0}}
+.t9{animation:m9 19.13s linear infinite}@keyframes m9{0%,53.75%{transform:translateX(0);animation-timing-function:steps(11,end)}55.76%,100%{transform:translateX(104px)}}
+.u9{animation:q9 19.13s linear infinite}@keyframes q9{0%,53.75%{opacity:0}53.80%,57.33%{opacity:.8}57.39%,100%{opacity:0}}
+.r10{animation:k10 19.13s linear infinite}@keyframes k10{0%,57.59%{opacity:0}57.65%,95.82%{opacity:1}98.43%,100%{opacity:0}}
+.r11{animation:k11 19.13s linear infinite}@keyframes k11{0%,62.61%{opacity:0}62.67%,95.82%{opacity:1}98.43%,100%{opacity:0}}
+.t11{animation:m11 19.13s linear infinite}@keyframes m11{0%,62.61%{transform:translateX(0);animation-timing-function:steps(11,end)}64.63%,100%{transform:translateX(104px)}}
+.u11{animation:q11 19.13s linear infinite}@keyframes q11{0%,62.61%{opacity:0}62.67%,66.20%{opacity:.8}66.25%,100%{opacity:0}}
+.r12{animation:k12 19.13s linear infinite}@keyframes k12{0%,66.46%{opacity:0}66.51%,95.82%{opacity:1}98.43%,100%{opacity:0}}
+.r13{animation:k13 19.13s linear infinite}@keyframes k13{0%,71.48%{opacity:0}71.53%,95.82%{opacity:1}98.43%,100%{opacity:0}}
+.t13{animation:m13 19.13s linear infinite}@keyframes m13{0%,71.48%{transform:translateX(0);animation-timing-function:steps(15,end)}74.22%,100%{transform:translateX(136px)}}
+.u13{animation:q13 19.13s linear infinite}@keyframes q13{0%,71.48%{opacity:0}71.53%,75.79%{opacity:.8}75.84%,100%{opacity:0}}
+.r14{animation:k14 19.13s linear infinite}@keyframes k14{0%,76.05%{opacity:0}76.10%,95.82%{opacity:1}98.43%,100%{opacity:0}}
+.r15{animation:k15 19.13s linear infinite}@keyframes k15{0%,76.37%{opacity:0}76.42%,95.82%{opacity:1}98.43%,100%{opacity:0}}
+.r16{animation:k16 19.13s linear infinite}@keyframes k16{0%,76.68%{opacity:0}76.73%,95.82%{opacity:1}98.43%,100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){[class^=r]{animation:none}[class^=t],[class^=u]{display:none}}
+</style>
+<rect width="780" height="427" rx="10" fill="#0d1117" stroke="#30363d"/>
+<path d="M1 34 V11 a10 10 0 0 1 10 -10 H769 a10 10 0 0 1 10 10 V34 Z" fill="#161b22"/>
+<line x1="1" y1="34" x2="779" y2="34" stroke="#30363d"/>
+<circle cx="22" cy="17" r="6" fill="#ff5f57"/>
+<circle cx="42" cy="17" r="6" fill="#febc2e"/>
+<circle cx="62" cy="17" r="6" fill="#28c840"/>
+<text x="390" y="22" text-anchor="middle" class="d" style="font-size:12px">chronokv ./data</text>
+<g class="r0"><text x="20" y="67"><tspan class="p">chronokv&gt; </tspan><tspan class="c">put user:42 {&#34;plan&#34;:&#34;free&#34;}</tspan></text><g class="t0"><rect x="101.5" y="52" width="234" height="21" fill="#0d1117"/><rect class="u0" x="101.5" y="55" width="8" height="16" fill="#7ee787"/></g></g>
+<g class="r1"><text x="20" y="88"><tspan class="d">ok @ 2026-11-10T09:30:00Z (1794303000000000000)</tspan></text></g>
+<g class="r2"><text x="20" y="109" class="n">  ⋯ 3 seconds later ⋯</text></g>
+<g class="r3"><text x="20" y="130"><tspan class="p">chronokv&gt; </tspan><tspan class="c">put user:42 {&#34;plan&#34;:&#34;pro&#34;}</tspan></text><g class="t3"><rect x="101.5" y="115" width="226" height="21" fill="#0d1117"/><rect class="u3" x="101.5" y="118" width="8" height="16" fill="#7ee787"/></g></g>
+<g class="r4"><text x="20" y="151"><tspan class="d">ok @ 2026-11-10T09:30:03Z (1794303003000000000)</tspan></text></g>
+<g class="r5"><text x="20" y="172"><tspan class="p">chronokv&gt; </tspan><tspan class="c">get user:42</tspan></text><g class="t5"><rect x="101.5" y="157" width="104" height="21" fill="#0d1117"/><rect class="u5" x="101.5" y="160" width="8" height="16" fill="#7ee787"/></g></g>
+<g class="r6"><text x="20" y="193"><tspan class="s">&#34;{\&#34;plan\&#34;:\&#34;pro\&#34;}&#34;</tspan></text></g>
+<g class="r7"><text x="20" y="214"><tspan class="p">chronokv&gt; </tspan><tspan class="c">get user:42 asof -2s</tspan></text><g class="t7"><rect x="101.5" y="199" width="177" height="21" fill="#0d1117"/><rect class="u7" x="101.5" y="202" width="8" height="16" fill="#7ee787"/></g></g>
+<g class="r8"><text x="20" y="235"><tspan class="s">&#34;{\&#34;plan\&#34;:\&#34;free\&#34;}&#34;</tspan></text></g>
+<g class="r9"><text x="20" y="256"><tspan class="p">chronokv&gt; </tspan><tspan class="c">del user:42</tspan></text><g class="t9"><rect x="101.5" y="241" width="104" height="21" fill="#0d1117"/><rect class="u9" x="101.5" y="244" width="8" height="16" fill="#7ee787"/></g></g>
+<g class="r10"><text x="20" y="277"><tspan class="d">ok @ 2026-11-10T09:30:04.2Z (1794303004200000000)</tspan></text></g>
+<g class="r11"><text x="20" y="298"><tspan class="p">chronokv&gt; </tspan><tspan class="c">get user:42</tspan></text><g class="t11"><rect x="101.5" y="283" width="104" height="21" fill="#0d1117"/><rect class="u11" x="101.5" y="286" width="8" height="16" fill="#7ee787"/></g></g>
+<g class="r12"><text x="20" y="319"><tspan class="d">(nil)</tspan></text></g>
+<g class="r13"><text x="20" y="340"><tspan class="p">chronokv&gt; </tspan><tspan class="c">history user:42</tspan></text><g class="t13"><rect x="101.5" y="325" width="136" height="21" fill="#0d1117"/><rect class="u13" x="101.5" y="328" width="8" height="16" fill="#7ee787"/></g></g>
+<g class="r14"><text x="20" y="361"><tspan class="d">2026-11-10T09:30:04.2Z (1794303004200000000)  </tspan><tspan class="x">(deleted)</tspan></text></g>
+<g class="r15"><text x="20" y="382"><tspan class="d">2026-11-10T09:30:03Z (1794303003000000000)  </tspan><tspan class="s">&#34;{\&#34;plan\&#34;:\&#34;pro\&#34;}&#34;</tspan></text></g>
+<g class="r16"><text x="20" y="403"><tspan class="d">2026-11-10T09:30:00Z (1794303000000000000)  </tspan><tspan class="s">&#34;{\&#34;plan\&#34;:\&#34;free\&#34;}&#34;</tspan></text></g>
+</svg>

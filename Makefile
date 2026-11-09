@@ -7,7 +7,7 @@ FUZZ_TARGETS = \
 	./internal/wal:FuzzReader \
 	./internal/sstable:FuzzOpen
 
-.PHONY: test test-long fuzz build lint
+.PHONY: test test-long fuzz build lint images
 
 test:
 	go test -race -short ./...
@@ -28,3 +28,7 @@ build:
 lint:
 	go vet ./...
 	staticcheck ./...
+
+# README images are drawn from a real session; docs/gen's test fails when they're stale.
+images:
+	go run ./docs/gen
